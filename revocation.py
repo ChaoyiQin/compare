@@ -47,35 +47,42 @@ def handle(day):
         if mask > 7 and mask < 25:
           bgp_list.append((prefix, asnum, mask))
 
-  for roa in roa_list:
-    prefix = roa[2]
-    content = (roa[1], roa[3], roa[0])
-    rnode = rtree.search_exact(prefix)
-    if rnode:
-      rcontent = rnode.data['content']
-      if len(rcontent) > 0:
-        rcontent.remove(content)
-      if len(rcontent) == 0:
-        rtree.delete(prefix)
-
-    rnode = rtree.add(prefix)
-    if rnode.data.has_key('content'):
-      rnode.data['content'].append(content)
-    else:
-      rnode.data['content'] = [content]
+  times = 0
+  with open('stat.txt', 'w') as stat:
+    for roa in roa_list:
+      prefix = roa[2]
+      content = (roa[1], roa[3], roa[0])
+      rnode = rtree.search_exact(prefix)
+      if rnode:
+        rcontent = rnode.data['content']
+        if len(rcontent) > 0:
+          rcontent.remove(content)
+        if len(rcontent) == 0:
+          rtree.delete(prefix)
+  
+      with open(file_result, 'w') as result:
+        for i in bgp_list:
+          bgp_status = status(i, rtree) 
+          if bgp_status == 0:
+            result.write("%s,AS%s,Valid\n" % (i[0], i[1]))
+          elif bgp_status == 1:
+            result.write("%s,AS%s,Unknown\n" % (i[0], i[1]))
+          else:
+            result.write("%s,AS%s,Invalid\n" % (i[0], i[1]))
+  
+      rnode = rtree.add(prefix)
+      if rnode.data.has_key('content'):
+        rnode.data['content'].append(content)
+      else:
+        rnode.data['content'] = [content]
+      diff.diff()
+      std_dict = std.std()
+      stat.write("(%s,%s,%s):%s\n" % (roa[2], roa[1], roa[3], str(std_dict)))
+      times += 1
+      if times == 2:
+        break
       
 
-  '''
-  with open(file_result, 'w') as result:
-    for i in bgp_list:
-      bgp_status = status(i, rtree) 
-      if bgp_status == 0:
-        result.write("%s,AS%s,Valid\n" % (i[0], i[1]))
-      elif bgp_status == 1:
-        result.write("%s,AS%s,Unknown\n" % (i[0], i[1]))
-      else:
-        result.write("%s,AS%s,Invalid\n" % (i[0], i[1]))
-  '''
     
 
 def status(bgp, rtree):
